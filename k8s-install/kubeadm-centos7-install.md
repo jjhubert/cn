@@ -23,11 +23,9 @@
   - adapter1
     - Attached to: NAT
     - Advanced: default
-    - notice: remember `MAC Address`(080027A71D80), we could use it later for linux setting
   - adapter2
     - Attached to: Host-only Adapter
     - advanced:default
-    - notice: remember `MAC Address(0800271EED5C)`, we could use it later for linux setting
 
 - set iso file
   - choose your box, right click it, then choose setting
