@@ -430,28 +430,28 @@
       --discovery-token-ca-cert-hash sha256:eb92a9bdbf1d09863aa4deab7d3260e12511c8af97489add0f67ed5e70b66fc4 
   ```
 
-- install calico cni plugin ([calico doc](https://docs.projectcalico.org/getting-started/kubernetes/quickstart))
+- download calico cni plugin && set cidr ([calico doc](https://docs.projectcalico.org/getting-started/kubernetes/quickstart))
+  
   ```shell
   curl -O https://docs.projectcalico.org/manifests/tigera-operator.yaml
   curl -O https://docs.projectcalico.org/manifests/custom-resources.yaml
   [root@k8s-01 ~]# vi custom-resources.yaml 
-  
-  # This section includes base Calico installation configuration.
-  # For more information, see: https://docs.projectcalico.org/v3.21/reference/installation/api#operator.tigera.io/v1.Installation
+    
   apiVersion: operator.tigera.io/v1
   kind: Installation
   metadata:
-  name: default
+    name: default
   spec:
-  # Configures Calico networking.
-  calicoNetwork:
-  # Note: The ipPools section cannot be modified post-install.
-  ipPools:
-  - blockSize: 26
-  cidr: 10.244.0.0/16
-  encapsulation: VXLANCrossSubnet
-  natOutgoing: Enabled
-  nodeSelector: all()
+    # Configures Calico networking.
+    calicoNetwork:
+      # Note: The ipPools section cannot be modified post-install.
+      ipPools:
+      - blockSize: 26
+        # set pod subnet
+        cidr: 10.244.0.0/16
+        encapsulation: VXLANCrossSubnet
+        natOutgoing: Enabled
+        nodeSelector: all()
   
   ---
   
@@ -460,11 +460,14 @@
   apiVersion: operator.tigera.io/v1
   kind: APIServer
   metadata:
-  name: default
+    name: default
   spec: {}
-  
-  [root@k8s-01 ~]# kubectl create -f tigera-operator.yaml
-  [root@k8s-01 ~]# kubectl create -f custom-resources.yaml
+   ```
+
+- create calico
+  ```shell
+  kubectl create -f tigera-operator.yaml
+  kubectl create -f custom-resources.yaml
   ```
   
 - confirm that all of pods are running with following command
