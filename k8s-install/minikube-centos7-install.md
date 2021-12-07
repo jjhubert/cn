@@ -21,7 +21,7 @@
     - 100GB
 - network
     - adapter1
-        - Attached to: NAT
+        - Attached to: Bridge
         - Advanced: default
     - adapter2
         - Attached to: Host-only Adapter
