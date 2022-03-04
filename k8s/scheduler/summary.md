@@ -7,14 +7,17 @@
 		- 监听api-server创建Pod的事件
 		- 查询还有绑定Node的Pod
 	2. 调度Pod到Node
-		- 调度因素
-			- 公平调度
-			- 资源高利用
-			- QOS
-			- affinit & anti-affinity
-			- 数据本地化（data locality）
-			- 内部负载干绕（inter-workload interference）
-			- deadlines
+        - 调度因素
+            - 公平调度
+            - 资源高利用
+            - QOS
+              - Guaranteed(request == limit)
+              - Burstable(request < limit)
+              - BestEffort(not config)
+            - affinit & anti-affinity
+            - 数据本地化（data locality）
+            - 内部负载干绕（inter-workload interference）
+            - deadlines
 
 ### 调度阶段
 1. predicate（过滤不符合条件的节点）
@@ -30,6 +33,17 @@
 
 ### pod分配方式
 - nodeName: 指定pod调度到指定名称的节点
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  containers:
+	- name: nginx
+	  image: nginx
+  nodeName: kube-01 
+```
 - nodeSelector: 指定pod调度到具有相同label的节点
 
 `给node打上相应label`
@@ -175,13 +189,60 @@ spec:
 ```
 - taints & toleration
 
+`Pod的toleration必须与Node的所有taint匹配才能被调度到Node上，缺一不可。taint与toleration类似一个过滤器，过滤不符合要求的节点。`
+  - taint的effect
+    - NoSchedule : 不调度到该Node(硬性规定)
+    - PreferNoSchedule : 尽量不调度到该Node(软性规定)如果未被过滤的污点中不存在 effect值为NoSchedule的污点，但是存在effect值为PreferNoSchedule的污点，则Kubernetes会尝试不将Pod分配到该节点。
+    - NoExecute : 不调度到该Node且当前Node下的Pod没有容忍该taint的话会直接被驱逐或在多少秒之后被驱逐
+  - 对Node的taint管理
+```shell
+# 添加taint
+kubectl taint nodes node1 key1=value1:NoSchedule
+# 删除taint
+kubectl taint nodes node1 key1=value1:NoSchedule-
+```
+  - 对Pod添加toleration
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+  labels:
+    env: test
+spec:
+  containers:
+	- name: nginx
+	  image: nginx
+	  imagePullPolicy: IfNotPresent
+  tolerations:
+	- key: "example-key"
+	  operator: "Exists"
+	  effect: "NoSchedule"
+	- key: "key1"
+	  operator: "Equal"
+	  value: "value1"
+	  effect: "NoSchedule"
+```
+`加入Pod保留时间。3600秒后被驱逐。`
+```yaml
+tolerations:
+- key: "key1"
+  operator: "Equal"
+  value: "value1"
+  effect: "NoExecute"
+  tolerationSeconds: 3600
+```
+
 
 ## 资源控制
 - 磁盘控制(控制Pod对磁盘的使用容量)
 `定时获取容器的日志与当前容器可写层的磁盘情况，超过限制就驱逐。`
-	- limits.ephemeral-storage
-	- requests.ephemeral-stoage
+  - limits.ephemeral-storage
+  - requests.ephemeral-stoage
 - init容器的资源
-	- 多个init容器以顺序执行。
-	- 多个init容器，以其中占用资源最大的配置来向api-server进行申请。
+  - 多个init容器以顺序执行。
+  - 多个init容器，以其中占用资源最大的配置来向api-server进行申请。
+- NodeRestriction(节点访问控制)
+  - 该准入控制器限制了 kubelet 可以修改的 Node 和 Pod 对象。
+  - kubelet 只可修改自己的 Node API 对象，只能修改绑定到节点本身的 Pod 对象。
 
