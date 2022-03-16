@@ -83,3 +83,29 @@ kubelet驱逐检查间隔(默认): `housekeeping-interval: 10s`
 Pod根据以下排名规则被Kubelet进行驱逐
 1. **BestEffort**或**Burstable**的Pod超过申请时的资源为第一个参考指标。然后根据优先级和超出申请多少的资源作为第二个参考指标。根据这两个指标先清理一部分Pod腾出资源空间。
 2. 若还需要进一步进行清理，则根据**Guaranteed**和**Burstable**优先级以及哪些使用的资源比申请要少，再进行最后驱逐。
+
+
+## api-initiated eviction
+api发起的驱逐其实就是通过客户端发起api驱逐请求，api-server接收到请求后创建一个**Eviction**对象进行优雅驱逐Pod的过程。
+
+发起驱逐的客户端可以是kubectl、curl、wget。
+
+可以通过**PodDisruptionBudgets**或**terminationGracePeriodSeconds**控制驱逐时的行为。
+
+### calling the eviction api
+**eviction object**
+```json
+{
+  "apiVersion": "policy/v1",
+  "kind": "Eviction",
+  "metadata": {
+    "name": "quux",
+    "namespace": "default"
+  }
+}
+```
+
+**calling**
+```shell
+curl -v -H 'Content-type: application/json' https://your-cluster-api-endpoint.example/api/v1/namespaces/default/pods/quux/eviction -d @eviction.json
+```
