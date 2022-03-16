@@ -1,10 +1,14 @@
 # Eviction
-- node-presure eviction
+- node-pressure eviction
   - eviction signals
   - eviction threshold
     - hard eviction threshold
     - soft eviction threshold
   - eviction monitoring interval
+  - node condition
+  - node condition oscillation
+  - reclaiming node disk resources
+  - pod selection for kubelet eviction
 - api-initiated eviction
 
 ## node-presure eviction
@@ -46,3 +50,36 @@ ps: Kubelet根据`eviction-soft-grace-period`与`eviction-max-pod-grace-period`�
 
 ### eviction monitoring interval
 kubelet驱逐检查间隔(默认): `housekeeping-interval: 10s` 
+
+### node condition
+主要是通过磁盘、内存、PID数目的维度来判断节点压力，因为这些都是不可压缩资源。
+
+`可以通过--node-status-update-frequency参数指定kubelet收集节点信息的频率。默认是10s。`
+
+| Node Condition  | Eviction Signal  | Description |
+| :----: | :----: | :----: |
+| MemoryPressure  | memory.available  | Available memory on the node has satisfied an eviction threshold |
+| DiskPressure  | nodefs.available, nodefs.inodesFree, imagefs.available, or imagefs.inodesFree  | Available disk space and inodes on either the node's root filesystem or image filesystem has satisfied an eviction threshold |
+| PIDPressure  | pid.available  | Available processes identifiers on the (Linux) node has fallen below an eviction threshold |
+
+### node condition oscillation
+控制Kubelet需要等待多长时间才转换节点状态。避免节点的状态频繁切换。
+
+`eviction-pressure-transition-period: 5m`
+
+### reclaim node disk resources
+磁盘主要存储镜像、Pod和容器的数据。镜像数据可以单独存放在imagefs的文件系统。因此在做资源回收的时候需要考虑是否有imagefs。
+- 有加载imagefs，会出现两种情况。
+  - 如果imagefs的剩余空间接近到达驱逐阈值，kubelet会清理没有使用的镜像。
+  - 若nodefs剩余空间到达阈值，kubelet会回收死掉的Pod和容器。
+- 没有加载imagefs，只出现一种情况。
+  - 若nodefs剩余空间到达阈值，kubelet会清理没用的镜像、死掉的Pod和容器。
+
+### pod selection for kubelet eviction
+1. Pod的使用资源是否超过申请
+2. Pod的优先级
+3. Pod当前使用资源相较于申请
+
+Pod根据以下排名规则被Kubelet进行驱逐
+1. **BestEffort**或**Burstable**的Pod超过申请时的资源为第一个参考指标。然后根据优先级和超出申请多少的资源作为第二个参考指标。根据这两个指标先清理一部分Pod腾出资源空间。
+2. 若还需要进一步进行清理，则根据**Guaranteed**和**Burstable**优先级以及哪些使用的资源比申请要少，再进行最后驱逐。
